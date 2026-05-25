@@ -1,0 +1,15 @@
+.DS_Store
+.idea/
+.vscode/
+*.log
+*.swp
+__pycache__/
+
+# 雙保險（subdirs 也各自有 .gitignore）
+**/.env
+**/.env.local
+**/.venv/
+**/node_modules/
+**/.next/
+**/*.db
+**/*.sqlite
