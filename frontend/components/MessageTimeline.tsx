@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import useSWR from "swr";
 import { API_BASE, fetcher, type Message } from "@/lib/api";
 
@@ -20,6 +20,10 @@ function fmt(ts: string) {
   });
 }
 
+function taipeiDayKey(ts: string | number | Date) {
+  return new Date(ts).toLocaleDateString("en-CA", { timeZone: "Asia/Taipei" });
+}
+
 function sentimentColor(s: string | null) {
   if (s === "bullish") return "text-(--color-up)";
   if (s === "bearish") return "text-(--color-down)";
@@ -33,21 +37,44 @@ export function MessageTimeline({ onPickTicker }: Props) {
     { refreshInterval: 60_000 }
   );
 
-  const sources = useMemo(() => {
+  // 每分鐘 tick 一次，讓「今天」的判斷在台北時間午夜後自動換日，
+  // 不依賴後端是否剛好有新資料進來。
+  const [nowTick, setNowTick] = useState<number>(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNowTick(Date.now()), 60_000);
+    return () => clearInterval(id);
+  }, []);
+  const todayKey = taipeiDayKey(nowTick);
+  const todayLabel = new Date(nowTick).toLocaleDateString("zh-TW", {
+    timeZone: "Asia/Taipei",
+    month: "numeric",
+    day: "numeric",
+  });
+
+  const todays = useMemo(() => {
     if (!data) return [];
-    return Array.from(new Set(data.map((m) => m.source)));
-  }, [data]);
+    return data.filter((m) => taipeiDayKey(m.published_at) === todayKey);
+  }, [data, todayKey]);
+
+  const sources = useMemo(
+    () => Array.from(new Set(todays.map((m) => m.source))),
+    [todays]
+  );
 
   const [filter, setFilter] = useState<string>("all");
   const filtered = useMemo(() => {
-    if (!data) return [];
-    return filter === "all" ? data : data.filter((m) => m.source === filter);
-  }, [data, filter]);
+    return filter === "all" ? todays : todays.filter((m) => m.source === filter);
+  }, [todays, filter]);
 
   return (
     <div className="flex flex-col h-full min-h-0">
       <div className="flex items-center justify-between mb-3">
-        <h2 className="text-(--color-text-1) font-medium">AI 精華摘要</h2>
+        <h2 className="text-(--color-text-1) font-medium">
+          AI 精華摘要
+          <span className="text-(--color-text-3) text-xs font-normal ml-2">
+            今日 · {todayLabel}
+          </span>
+        </h2>
         <select
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
@@ -66,7 +93,7 @@ export function MessageTimeline({ onPickTicker }: Props) {
         {isLoading && <div className="text-(--color-text-3) text-sm">載入中…</div>}
         {error && <div className="text-(--color-up) text-sm">訊息載入失敗</div>}
         {filtered.length === 0 && !isLoading && (
-          <div className="text-(--color-text-3) text-sm">尚無訊息，等 pipeline 推資料進來</div>
+          <div className="text-(--color-text-3) text-sm">今天還沒有新摘要，等 pipeline 推資料進來</div>
         )}
 
         <ul className="space-y-3">
