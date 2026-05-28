@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import useSWR from "swr";
 import { WatchlistTabs } from "@/components/WatchlistTabs";
 import { KlineChart } from "@/components/KlineChart";
@@ -9,8 +9,10 @@ import {
   API_BASE,
   DEFAULT_INDICATORS,
   fetcher,
+  taipeiDayKey,
+  todayStocksFromMessages,
   type IndicatorVisibility,
-  type WatchlistItem,
+  type Message,
 } from "@/lib/api";
 
 type Period = "daily" | "weekly" | "monthly";
@@ -53,16 +55,28 @@ export default function Page() {
   const toggleVisibility = (key: keyof IndicatorVisibility) =>
     setVisibility((v) => ({ ...v, [key]: !v[key] }));
 
-  const { data: watch } = useSWR<WatchlistItem[]>(
-    `${API_BASE}/api/watchlist?days=14&min_mentions=1`,
+  const { data: messages, error: watchError, isLoading: watchLoading } = useSWR<Message[]>(
+    `${API_BASE}/api/messages?limit=50`,
     fetcher,
     { refreshInterval: 60_000 }
   );
+
+  const [nowTick, setNowTick] = useState<number>(() => Date.now());
   useEffect(() => {
-    if (!ticker && watch && watch.length > 0) {
-      setTicker(watch[0].ticker);
-    }
-  }, [ticker, watch]);
+    const id = setInterval(() => setNowTick(Date.now()), 60_000);
+    return () => clearInterval(id);
+  }, []);
+  const todayKey = taipeiDayKey(nowTick);
+  const items = useMemo(
+    () => todayStocksFromMessages(messages, todayKey),
+    [messages, todayKey]
+  );
+
+  // 只在今天的清單裡選股；目前選的不在今天清單（例如昨天殘留），自動跳到今天第一檔。
+  useEffect(() => {
+    const inList = ticker != null && items.some((w) => w.ticker === ticker);
+    if (!inList && items.length > 0) setTicker(items[0].ticker);
+  }, [ticker, items]);
 
   return (
     <main className="min-h-screen px-4 sm:px-6 py-5">
@@ -91,6 +105,9 @@ export default function Page() {
           </div>
           <div className="flex flex-col gap-4">
             <WatchlistTabs
+              items={items}
+              isLoading={watchLoading}
+              error={watchError}
               currentTicker={ticker}
               onPickTicker={setTicker}
               period={period}

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import useSWR from "swr";
-import { API_BASE, fetcher, type Message } from "@/lib/api";
+import { API_BASE, fetcher, taipeiDayKey, type Message } from "@/lib/api";
 
 type Props = {
   onPickTicker: (ticker: string) => void;
@@ -18,10 +18,6 @@ function fmt(ts: string) {
     minute: "2-digit",
     timeZone: "Asia/Taipei",
   });
-}
-
-function taipeiDayKey(ts: string | number | Date) {
-  return new Date(ts).toLocaleDateString("en-CA", { timeZone: "Asia/Taipei" });
 }
 
 function sentimentColor(s: string | null) {

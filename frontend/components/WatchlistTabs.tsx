@@ -1,14 +1,14 @@
 "use client";
 
-import useSWR from "swr";
 import {
-  API_BASE,
-  fetcher,
   type IndicatorVisibility,
   type WatchlistItem,
 } from "@/lib/api";
 
 type Props = {
+  items: WatchlistItem[];
+  isLoading: boolean;
+  error: unknown;
   currentTicker: string | null;
   onPickTicker: (ticker: string) => void;
   period: "daily" | "weekly" | "monthly";
@@ -35,6 +35,9 @@ const INDICATORS: {
 ];
 
 export function WatchlistTabs({
+  items,
+  isLoading,
+  error,
   currentTicker,
   onPickTicker,
   period,
@@ -42,21 +45,15 @@ export function WatchlistTabs({
   visibility,
   onToggleVisibility,
 }: Props) {
-  const { data, error, isLoading } = useSWR<WatchlistItem[]>(
-    `${API_BASE}/api/watchlist?days=14&min_mentions=1`,
-    fetcher,
-    { refreshInterval: 60_000 }
-  );
-
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-2">
         {isLoading && <span className="text-(--color-text-3) text-sm">載入觀測股…</span>}
-        {error && <span className="text-(--color-up) text-sm">觀測股載入失敗</span>}
-        {data && data.length === 0 && (
-          <span className="text-(--color-text-3) text-sm">尚無被提及的股票</span>
+        {!!error && <span className="text-(--color-up) text-sm">觀測股載入失敗</span>}
+        {!isLoading && items.length === 0 && (
+          <span className="text-(--color-text-3) text-sm">今天還沒有被提及的股票</span>
         )}
-        {data?.map((w) => {
+        {items.map((w) => {
           const active = w.ticker === currentTicker;
           return (
             <button
