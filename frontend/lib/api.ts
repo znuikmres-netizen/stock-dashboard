@@ -103,6 +103,12 @@ export function taipeiDayKey(ts: string | number | Date) {
   return new Date(ts).toLocaleDateString("en-CA", { timeZone: "Asia/Taipei" });
 }
 
+// 台股代號是純數字（2330、0050、00878），美股是英文字母（NVDA、TSLA）。
+// K 線後端走 FinMind，只抓得到台股，所以 K 線觀測區只留純數字代號。
+export function isTaiwanTicker(ticker: string) {
+  return /^\d+$/.test(ticker);
+}
+
 // 從訊息列表抓出指定台北日期當天被提到的股票，彙整成觀測清單格式。
 // messages 已依 published_at 由新到舊排序，所以每檔第一次出現即為最新提及。
 export function todayStocksFromMessages(
@@ -114,6 +120,7 @@ export function todayStocksFromMessages(
   for (const m of messages) {
     if (taipeiDayKey(m.published_at) !== dayKey) continue;
     for (const s of m.stocks) {
+      if (!isTaiwanTicker(s.ticker)) continue; // 美股不進 K 線觀測區
       const hit = map.get(s.ticker);
       if (hit) {
         hit.mention_count += 1;

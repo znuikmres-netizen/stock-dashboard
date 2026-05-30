@@ -9,6 +9,7 @@ import {
   API_BASE,
   DEFAULT_INDICATORS,
   fetcher,
+  isTaiwanTicker,
   taipeiDayKey,
   todayStocksFromMessages,
   type IndicatorVisibility,
@@ -54,6 +55,11 @@ export default function Page() {
 
   const toggleVisibility = (key: keyof IndicatorVisibility) =>
     setVisibility((v) => ({ ...v, [key]: !v[key] }));
+
+  // K 線觀測區只看台股；點到美股（例如右側摘要裡的 NVDA）就忽略，不切換圖表。
+  const pickTicker = (t: string) => {
+    if (isTaiwanTicker(t)) setTicker(t);
+  };
 
   const { data: messages, error: watchError, isLoading: watchLoading } = useSWR<Message[]>(
     `${API_BASE}/api/messages?limit=50`,
@@ -109,7 +115,7 @@ export default function Page() {
               isLoading={watchLoading}
               error={watchError}
               currentTicker={ticker}
-              onPickTicker={setTicker}
+              onPickTicker={pickTicker}
               period={period}
               onPickPeriod={setPeriod}
               visibility={visibility}
@@ -120,7 +126,7 @@ export default function Page() {
         </section>
 
         <section className="lg:col-span-4 rounded-xl border border-(--color-border) bg-(--color-card) p-4 h-[calc(100vh-7rem)] min-h-[500px]">
-          <MessageTimeline onPickTicker={setTicker} />
+          <MessageTimeline onPickTicker={pickTicker} />
         </section>
       </div>
     </main>
